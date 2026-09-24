@@ -1,7 +1,16 @@
 # Progressive Life Ontology
 ontology:
   world:
-    entities: [episode, voice, event, decision, relation, view, actor, interface, provider, artifact]
+    entities: [voice, episode, event, decision, relation, view, actor, interface, provider, artifact]
+  components:
+    voice: {responsibility: canonical_source, agent: voice}
+    episode: {responsibility: fragment_extraction, agent: episode}
+    event: {responsibility: history, agent: event}
+    decision: {responsibility: interpretation, agent: decision}
+    relation: {responsibility: edge, agent: relation}
+    view: {responsibility: projection, agent: view}
+    interface: {responsibility: boundary, agent: interface}
+    orchestration: {responsibility: coordination, agent: orchestration}
   episode:
     type: fragment
     canonical_source: voice
