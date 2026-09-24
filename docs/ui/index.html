@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SHITAGAKI — Fragment Field</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.11.10/lib/p5.min.js"></script>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#080808;color:#eee;font-family:system-ui,sans-serif}
+canvas{display:block}
+#title,#hint{position:fixed;z-index:2;left:22px;font-size:11px;opacity:.4}
+#title{top:18px;letter-spacing:.2em}
+#hint{bottom:18px}
+</style>
+</head>
+<body>
+<div id="title">SHITAGAKI / FRAGMENT FIELD</div>
+<div id="hint">drag fragments · move closer to discover relations</div>
+<script>
+const fragments=["東京に出てきた","何かを作りたいと思った","仕事を辞めた","父親と話した","あの夜のこと","写真を撮っていた","まだ何者でもなかった","ここから始まった"];
+let nodes=[];
+function setup(){
+  createCanvas(windowWidth,windowHeight);
+  textFont("sans-serif"); textSize(16);
+  fragments.forEach(text=>nodes.push({text,x:random(100,width-100),y:random(100,height-100),vx:random(-.18,.18),vy:random(-.12,.12),selected:false}));
+}
+function draw(){
+  background(8);
+  for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){
+    const a=nodes[i],b=nodes[j],d=dist(a.x,a.y,b.x,b.y);
+    if(d<180){stroke(180,map(d,0,180,70,0));line(a.x,a.y,b.x,b.y);}
+  }
+  for(const n of nodes){
+    if(!n.selected){n.x+=n.vx;n.y+=n.vy;if(n.x<60||n.x>width-60)n.vx*=-1;if(n.y<60||n.y>height-60)n.vy*=-1;}
+    const d=dist(mouseX,mouseY,n.x,n.y),focus=d<130;
+    if(focus){n.x+=(mouseX-n.x)*.002;n.y+=(mouseY-n.y)*.002;}
+    noStroke();fill(focus||n.selected?255:190);textAlign(CENTER,CENTER);text(n.text,n.x,n.y);
+  }
+}
+function mousePressed(){for(const n of nodes)if(dist(mouseX,mouseY,n.x,n.y)<80){n.selected=true;n.ox=n.x-mouseX;n.oy=n.y-mouseY;return;}}
+function mouseDragged(){for(const n of nodes)if(n.selected){n.x=mouseX+n.ox;n.y=mouseY+n.oy;}}
+function mouseReleased(){for(const n of nodes)n.selected=false;}
+function windowResized(){resizeCanvas(windowWidth,windowHeight);}
+</script>
+</body>
+</html>
