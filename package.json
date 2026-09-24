@@ -1,0 +1,34 @@
+{
+  "name": "shitagaki",
+  "version": "1.0.0",
+  "description": "> **いつでもどこでも、ほんの下書きが本の下書きになる。**",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bonsai/SHITAGAKI.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bonsai/SHITAGAKI/issues"
+  },
+  "homepage": "https://github.com/bonsai/SHITAGAKI#readme",
+  "devDependencies": {
+    "@ai-sdk/openai": "^4.0.74",
+    "@mastra/core": "^1.69.0",
+    "@types/node": "^26.6.2",
+    "dotenv": "^18.0.3",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "zod": "^4.6.5"
+  },
+  "dependencies": {
+    "ai": "^7.0.113"
+  }
+}
