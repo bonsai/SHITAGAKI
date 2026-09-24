@@ -1,13 +1,20 @@
 # Progressive Life Topology
 topology:
   flow:
-    canonical: [voice, episode, event, decision, relation, view]
+    source: [voice, episode]
+    reasoning: [episode, decision, relation]
+    confirmation: [actor, relation, event]
+    projection: [event, view]
     operational: [actor, action, event, decision, action, event]
-  relationships:
-    - {from: actor, to: voice, type: records}
+  boundaries:
     - {from: voice, to: episode, type: derives}
-    - {from: episode, to: episode, type: relates}
+    - {from: episode, to: decision, type: informs}
     - {from: decision, to: relation, type: proposes}
     - {from: actor, to: relation, type: confirms}
-    - {from: relation, to: view, type: projects}
+    - {from: actor, to: event, type: records}
+    - {from: relation, to: event, type: confirmed_by}
+    - {from: event, to: view, type: projects}
+    - {from: interface, to: voice, type: inputs}
+    - {from: orchestration, to: interface, type: operates}
   world_flow: [history, latest, now, action]
+  principle: components communicate through explicit interfaces and events
