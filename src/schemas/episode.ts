@@ -45,3 +45,22 @@ export const DraftSchema = z.object({
 });
 
 export type Draft = z.infer<typeof DraftSchema>;
+
+export const ArrangementSchema = z.object({
+  sections: z.array(
+    z.object({
+      title: z.string().describe('章のタイトル'),
+      episodeIds: z.array(z.string()).describe('含めるEpisodeのIDリスト'),
+      reason: z.string().describe('なぜこの順序・配置か'),
+    })
+  ).describe('読ませる順序に再配置された章立て'),
+  overallFlow: z.string().describe('全体の流れの説明'),
+});
+
+export type Arrangement = z.infer<typeof ArrangementSchema>;
+
+export const EditedDraftSchema = DraftSchema.extend({
+  editorNotes: z.array(z.string()).describe('編集者からのコメント・提案'),
+});
+
+export type EditedDraft = z.infer<typeof EditedDraftSchema>;
