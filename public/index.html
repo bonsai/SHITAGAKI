@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SHITAGAKI — 下書きを残す</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    background: #f5f2eb;
+    color: #333;
+    line-height: 1.6;
+    padding: 1rem;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  .subtitle { color: #888; font-size: 0.8rem; margin-bottom: 1.25rem; }
+  .badge {
+    display: inline-block; padding: 0.2rem 0.6rem; border-radius: 999px;
+    font-size: 0.7rem; font-weight: 700; margin-left: 0.5rem;
+  }
+  .badge-green { background: #d4edda; color: #155724; }
+  .badge-gray { background: #e2e3e5; color: #383d41; }
+  .badge-yellow { background: #fff3cd; color: #856404; }
+  .section { background: #fff; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  label { display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 0.4rem; color: #555; }
+  textarea, input[type="text"] {
+    width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px;
+    font-size: 1rem; resize: vertical; font-family: inherit;
+  }
+  textarea { min-height: 120px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.6rem 1.2rem; border: none; border-radius: 8px;
+    font-size: 0.9rem; cursor: pointer; transition: opacity 0.2s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: #2d2d2d; color: #fff; }
+  .btn-danger { background: #c0392b; color: #fff; }
+  .btn-secondary { background: #e0e0e0; color: #333; }
+  .row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem; align-items: center; }
+  .mic { width: 48px; height: 48px; border-radius: 50%; font-size: 1.2rem; justify-content: center; }
+  .mic.recording { animation: pulse 1.2s infinite; background: #c0392b; color: #fff; }
+  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+  .status { font-size: 0.8rem; color: #888; margin-top: 0.5rem; min-height: 1.2em; }
+  .progress-track { width: 100%; height: 6px; background: #eee; border-radius: 3px; margin-top: 0.5rem; overflow: hidden; }
+  .progress-bar { height: 100%; width: 0%; background: #2d2d2d; border-radius: 3px; transition: width 0.3s; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0.75rem; margin-top: 0.75rem; }
+  .card {
+    background: #fffef8; border: 1px solid #e8e4dc; border-radius: 10px;
+    padding: 1rem; cursor: grab; position: relative;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .card:active { cursor: grabbing; }
+  .card.dragging { opacity: 0.5; }
+  .card-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 0.4rem; }
+  .card-summary { font-size: 0.85rem; color: #555; margin-bottom: 0.6rem; }
+  .card-meta { font-size: 0.75rem; color: #999; display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .tag { padding: 0.15rem 0.5rem; border-radius: 999px; }
+  .tag-people { background: #e3f2fd; color: #1565c0; }
+  .tag-place { background: #e8f5e9; color: #2e7d32; }
+  .tag-time { background: #fff3e0; color: #e65100; }
+  .hidden { display: none; }
+  pre {
+    background: #f7f7f7; padding: 0.75rem; border-radius: 8px;
+    font-size: 0.8rem; overflow-x: auto;
+  }
+  .ai-info { font-size: 0.8rem; color: #666; margin-bottom: 0.75rem; }
+</style>
+</head>
+<body>
+
+<h1>SHITAGAKI</h1>
+<p class="subtitle">ブラウザでできる限り。音声は Web Speech API、保存は localStorage、AI はブラウザ内。</p>
+
+<!-- AI 状態 -->
+<div class="section">
+  <label>AI エンジン</label>
+  <div class="ai-info" id="aiInfo">検出中…</div>
+  <div class="row">
+    <button class="btn btn-primary hidden" id="loadModelBtn">モデルを読み込む</button>
+    <span id="aiModelName" class="badge badge-gray hidden"></span>
+  </div>
+  <div class="progress-track hidden" id="progressTrack"><div class="progress-bar" id="progressBar"></div></div>
+  <div class="status" id="aiStatus"></div>
+</div>
+
+<div class="section">
+  <label>話す / 書く</label>
+  <textarea id="transcript" placeholder="ここに直接書く、または🎤で話す…"></textarea>
+  <div class="row">
+    <button class="btn btn-danger mic" id="micBtn" title="音声入力">🎤</button>
+    <button class="btn btn-primary" id="sendBtn" disabled>Episode を抽出</button>
+    <button class="btn btn-secondary" id="clearBtn">クリア</button>
+    <button class="btn btn-secondary" id="loadBtn">localStorage 復元</button>
+  </div>
+  <div class="status" id="status"></div>
+</div>
+
+<div class="section hidden" id="resultSection">
+  <label>抽出された Episode（ドラッグで並べ替え）</label>
+  <div class="cards" id="cards"></div>
+  <div class="row" style="margin-top:1rem">
+    <button class="btn btn-secondary" id="exportBtn">Markdown 出力</button>
+    <button class="btn btn-secondary" id="saveBtn">localStorage に保存</button>
+  </div>
+  <pre class="hidden" id="exportArea"></pre>
+</div>
+
+<script type="module">
+import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+env.allowLocalModels = false;
+env.useBrowserCache = true;
+
+const $ = id => document.getElementById(id);
+const transcriptEl = $('transcript');
+const micBtn = $('micBtn');
+const sendBtn = $('sendBtn');
+const clearBtn = $('clearBtn');
+const loadBtn = $('loadBtn');
+const exportBtn = $('exportBtn');
+const saveBtn = $('saveBtn');
+const statusEl = $('status');
+const resultSection = $('resultSection');
+const cardsEl = $('cards');
+const exportArea = $('exportArea');
+const aiInfo = $('aiInfo');
+const aiStatus = $('aiStatus');
+const loadModelBtn = $('loadModelBtn');
+const progressTrack = $('progressTrack');
+const progressBar = $('progressBar');
+const aiModelName = $('aiModelName');
+
+let recognition = null;
+let episodes = [];
+let aiEngine = null; // 'gemini-nano' | 'transformers'
+let pipe = null;
+let windowAiSession = null;
+
+/* =================== AI 検出 =================== */
+
+async function detectAi() {
+  // 1. Chrome built-in AI (Gemini Nano)
+  if ('ai' in window) {
+    try {
+      const can = await window.ai.canCreateTextSession();
+      if (can === 'readily' || can === 'after-download') {
+        windowAiSession = await window.ai.createTextSession();
+        aiEngine = 'gemini-nano';
+        aiInfo.innerHTML = 'Chrome 内蔵 AI (Gemini Nano) <span class="badge badge-green">利用可能</span>';
+        sendBtn.disabled = false;
+        return;
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  // 2. Transformers.js fallback
+  aiInfo.innerHTML = 'Chrome 内蔵 AI は利用不可。<br>代替としてブラウザ内モデル (Phi-3 mini 4bit) を使用できます。';
+  loadModelBtn.classList.remove('hidden');
+  aiEngine = 'transformers';
+}
+
+loadModelBtn.onclick = async () => {
+  loadModelBtn.disabled = true;
+  progressTrack.classList.remove('hidden');
+  aiStatus.textContent = 'モデルをダウンロード中…初回は時間がかかります (約 800MB)';
+
+  try {
+    pipe = await pipeline('text-generation', 'Xenova/Phi-3-mini-4k-instruct', {
+      quantized: true,
+      progress_callback: (x) => {
+        if (x.status === 'progress') {
+          const pct = Math.round((x.loaded / x.total) * 100);
+          progressBar.style.width = pct + '%';
+          aiStatus.textContent = `${x.file} — ${pct}%`;
+        }
+        if (x.status === 'done') {
+          aiStatus.textContent = `${x.file} 完了`;
+        }
+      }
+    });
+    aiModelName.textContent = 'Phi-3-mini-q4';
+    aiModelName.classList.remove('hidden');
+    aiModelName.classList.replace('badge-gray', 'badge-green');
+    sendBtn.disabled = false;
+    aiStatus.textContent = 'モデル準備完了';
+    progressBar.style.width = '100%';
+  } catch (err) {
+    aiStatus.textContent = 'エラー: ' + err.message;
+    loadModelBtn.disabled = false;
+  }
+};
+
+/* =================== Web Speech API =================== */
+
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = 'ja-JP';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.onresult = e => {
+    let final = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) final += e.results[i][0].transcript;
+    }
+    if (final) transcriptEl.value += final;
+  };
+  recognition.onerror = e => statusEl.textContent = '音声認識エラー: ' + e.error;
+  recognition.onend = () => { micBtn.classList.remove('recording'); statusEl.textContent = '音声入力終了'; };
+} else {
+  micBtn.disabled = true;
+  micBtn.title = '非対応';
+}
+
+micBtn.onclick = () => {
+  if (!recognition) return;
+  if (micBtn.classList.contains('recording')) {
+    recognition.stop();
+  } else {
+    recognition.start();
+    micBtn.classList.add('recording');
+    statusEl.textContent = '聞いています…';
+  }
+};
+
+/* =================== Episode 抽出 =================== */
+
+sendBtn.onclick = async () => {
+  const text = transcriptEl.value.trim();
+  if (!text) { statusEl.textContent = 'テキストを入力してください'; return; }
+  if (!aiEngine) { statusEl.textContent = 'AI が未準備です'; return; }
+
+  sendBtn.disabled = true;
+  statusEl.textContent = 'AI 処理中…';
+
+  try {
+    let raw;
+    const system = `あなたは人生の断片（Episode）を抽出する専門家です。以下の文章からEpisodeを抽出し、説明文なしで厳密にJSON配列のみを出力してください。
+各Episodeの形式: {"id":"短い英数字","title":"10〜30字","summary":"50〜200字","people":["人物名"],"places":["場所名"],"timeHint":"時期","confidence":0.0〜1.0}`;
+    const user = `文章:\n${text}`;
+
+    if (aiEngine === 'gemini-nano') {
+      raw = await windowAiSession.prompt(system + '\n\n' + user);
+    } else {
+      const out = await pipe(`${system}\n\n${user}\n\nJSON出力:\n`, {
+        max_new_tokens: 2048,
+        temperature: 0.2,
+        do_sample: true,
+      });
+      raw = out[0].generated_text;
+    }
+
+    const json = extractJson(raw);
+    const parsed = JSON.parse(json);
+    episodes = Array.isArray(parsed) ? parsed : [parsed];
+    renderCards();
+    resultSection.classList.remove('hidden');
+    statusEl.textContent = `Episode ${episodes.length}件抽出`;
+  } catch (err) {
+    statusEl.textContent = 'エラー: ' + err.message;
+    console.error(err);
+  } finally {
+    sendBtn.disabled = false;
+  }
+};
+
+function extractJson(text) {
+  const start = text.indexOf('[');
+  const end = text.lastIndexOf(']');
+  if (start !== -1 && end !== -1 && end > start) return text.slice(start, end + 1);
+  throw new Error('JSONが見つかりませんでした');
+}
+
+/* =================== カード描画 =================== */
+
+function renderCards() {
+  cardsEl.innerHTML = '';
+  episodes.forEach((ep, i) => {
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.draggable = true;
+    div.dataset.index = i;
+    div.innerHTML = `
+      <div class="card-title">${esc(ep.title || ep.shortTitle || '無題')}</div>
+      <div class="card-summary">${esc(ep.summary || ep.content || '')}</div>
+      <div class="card-meta">
+        ${(ep.people || []).map(p => `<span class="tag tag-people">👤 ${esc(p)}</span>`).join('')}
+        ${(ep.places || []).map(p => `<span class="tag tag-place">📍 ${esc(p)}</span>`).join('')}
+        ${ep.timeHint ? `<span class="tag tag-time">📅 ${esc(ep.timeHint)}</span>` : ''}
+      </div>
+    `;
+    div.ondragstart = e => { e.dataTransfer.setData('text/plain', i); div.classList.add('dragging'); };
+    div.ondragend = () => div.classList.remove('dragging');
+    div.ondragover = e => e.preventDefault();
+    div.ondrop = e => {
+      e.preventDefault();
+      const from = +e.dataTransfer.getData('text/plain');
+      if (from === i) return;
+      const item = episodes.splice(from, 1)[0];
+      episodes.splice(i, 0, item);
+      renderCards();
+    };
+    cardsEl.appendChild(div);
+  });
+}
+
+function esc(s) {
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+/* =================== 保存 / 読み込み =================== */
+
+saveBtn.onclick = () => {
+  localStorage.setItem('shitagaki_episodes', JSON.stringify(episodes));
+  statusEl.textContent = 'localStorage に保存しました';
+};
+
+loadBtn.onclick = () => {
+  const raw = localStorage.getItem('shitagaki_episodes');
+  if (!raw) { statusEl.textContent = '保存データがありません'; return; }
+  try {
+    episodes = JSON.parse(raw);
+    renderCards();
+    resultSection.classList.remove('hidden');
+    statusEl.textContent = `${episodes.length}件復元しました`;
+  } catch { statusEl.textContent = '復元失敗'; }
+};
+
+clearBtn.onclick = () => {
+  transcriptEl.value = '';
+  episodes = [];
+  resultSection.classList.add('hidden');
+  exportArea.classList.add('hidden');
+  statusEl.textContent = '';
+};
+
+/* =================== Markdown 出力 =================== */
+
+exportBtn.onclick = () => {
+  const md = episodes.map((ep, i) =>
+    `## ${i + 1}. ${ep.title || ep.shortTitle || '無題'}\n\n` +
+    `${ep.summary || ep.content || ''}\n\n` +
+    `- 人物: ${(ep.people || []).join('、') || '—'}\n` +
+    `- 場所: ${(ep.places || []).join('、') || '—'}\n` +
+    `- 時期: ${ep.timeHint || '—'}\n`
+  ).join('\n---\n\n');
+  exportArea.textContent = md;
+  exportArea.classList.remove('hidden');
+};
+
+/* =================== 初期化 =================== */
+
+detectAi();
+</script>
+</body>
+</html>
